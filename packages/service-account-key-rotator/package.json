@@ -1,0 +1,46 @@
+{
+  "name": "@google-automations/service-account-key-rotator",
+  "version": "1.0.0",
+  "description": "Rotate service account keys",
+  "scripts": {
+    "compile": "tsc -p .",
+    "pretest": "npm run compile",
+    "prepare": "npm run compile",
+    "test": "cross-env NODE_ENV=test LOG_LEVEL=fatal c8 mocha ./build/test",
+    "system-test": "npm run pretest && cross-env LOG_LEVEL=fatal mocha ./build/test/integration",
+    "fix": "gts fix",
+    "lint": "gts check"
+  },
+  "bin": "./build/src/cli.js",
+  "main": "build/src/service-account-key-rotator.js",
+  "repository": "https://github.com/googleapis/repo-automation-bots.git",
+  "homepage": "https://github.com/googleapis/repo-automation-bots",
+  "bugs": "https://github.com/googleapis/repo-automation-bots/issues",
+  "dependencies": {
+    "@google-cloud/secret-manager": "^3.7.3",
+    "@googleapis/iam": "^0.2.0",
+    "google-auth-library": "^7.3.0",
+    "yargs": "^17.0.1"
+  },
+  "devDependencies": {
+    "@types/mocha": "^8.0.0",
+    "@types/node": "^14.0.0",
+    "@types/yargs": "^17.0.0",
+    "c8": "^7.3.5",
+    "cross-env": "^7.0.0",
+    "gts": "^3.0.0",
+    "mocha": "^8.0.0",
+    "nock": "^13.0.0",
+    "smee-client": "^1.1.0",
+    "typescript": "~4.3.0"
+  },
+  "engines": {
+    "node": ">= 12.18.2"
+  },
+  "keywords": [],
+  "author": "Google LLC.",
+  "license": "Apache-2.0",
+  "files": [
+    "build/src"
+  ]
+}
