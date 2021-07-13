@@ -16,6 +16,12 @@ import {GoogleAuth} from 'google-auth-library';
 import {iam} from '@googleapis/iam';
 import {v1 as SecretManagerV1} from '@google-cloud/secret-manager';
 
+interface ServiceAccount {
+  type: string;
+  project_id: string;
+  client_email: string;
+}
+
 async function createServiceAccountKey(
   auth: GoogleAuth,
   serviceAccountProjectId: string,
@@ -83,4 +89,31 @@ export async function rotateSecret(
   );
   console.log(`updated secret: ${version}`);
   return true;
+}
+
+export async function fetchServiceAccountSecret(
+  secretManagerProjectId: string,
+  secretName: string
+): Promise<ServiceAccount | undefined> {
+  const auth = new GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+  });
+  const secretsClient = new SecretManagerV1.SecretManagerServiceClient({
+    auth,
+  });
+  console.log(
+    `fetching secret: ${secretName} (${secretManagerProjectId})`
+  );
+  const name = `projects/${secretManagerProjectId}/secrets/${secretName}/versions/latest`;
+  const [secret] = await secretsClient.accessSecretVersion({
+    name,
+  });
+  const data = secret.payload?.data;
+  if (data) {
+    const serviceAccount: ServiceAccount = JSON.parse(data.toString());
+    if (serviceAccount.type === 'service_account') {
+      return serviceAccount;
+    }
+  }
+  return undefined;
 }

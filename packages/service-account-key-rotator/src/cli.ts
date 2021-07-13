@@ -14,11 +14,19 @@
 // limitations under the License.
 
 import yargs = require('yargs');
-import {rotateSecret} from './service-account-key-rotator';
+import {
+  rotateSecret,
+  fetchServiceAccountSecret,
+} from './service-account-key-rotator';
 
 interface Args {
-  'service-account-project-id': string;
-  'service-account': string;
+  'service-account-project-id'?: string;
+  'service-account'?: string;
+  'secret-manager-project-id': string;
+  'secret-name': string;
+}
+
+interface AuditArgs {
   'secret-manager-project-id': string;
   'secret-name': string;
 }
@@ -31,12 +39,10 @@ const rotateCommand: yargs.CommandModule<{}, Args> = {
       .option('service-account-project-id', {
         describe: 'project that contains the service account',
         type: 'string',
-        demand: true,
       })
       .option('service-account', {
         describe: 'email address of the service account',
         type: 'string',
-        demand: true,
       })
       .option('secret-manager-project-id', {
         describe: 'project that contains the secret',
@@ -50,17 +56,64 @@ const rotateCommand: yargs.CommandModule<{}, Args> = {
       });
   },
   async handler(argv) {
+    let serviceAccountProjectId = argv['service-account-project-id'];
+    let serviceAccountEmail = argv['service-account'];
+    const secretManagerProjectId = argv['secret-manager-project-id'];
+    const secretName = argv['secret-name'];
+    if (!serviceAccountProjectId || !serviceAccountEmail) {
+      console.log('No service account specified - looking up via secret');
+      const serviceAccount = await fetchServiceAccountSecret(
+        secretManagerProjectId,
+        secretName
+      );
+      if (!serviceAccount) {
+        throw new Error(
+          `Unable to find service account for secret ${secretName} (${secretManagerProjectId})`
+        );
+      }
+      serviceAccountProjectId = serviceAccount.project_id;
+      serviceAccountEmail = serviceAccount.client_email;
+    }
     await rotateSecret(
-      argv['service-account-project-id'],
-      argv['service-account'],
-      argv['secret-manager-project-id'],
-      argv['secret-name']
+      serviceAccountProjectId,
+      serviceAccountEmail,
+      secretManagerProjectId,
+      secretName
     );
   },
 };
 
+const auditCommand: yargs.CommandModule<{}, AuditArgs> = {
+  command: 'audit',
+  describe: 'Fetch secret',
+  builder(yargs) {
+    return yargs
+      .option('secret-manager-project-id', {
+        describe: 'project that contains the secret',
+        type: 'string',
+        demand: true,
+      })
+      .option('secret-name', {
+        describe: 'name of the secret',
+        type: 'string',
+        demand: true,
+      });
+  },
+  async handler(argv) {
+    const secret = await fetchServiceAccountSecret(
+      argv['secret-manager-project-id'],
+      argv['secret-name']
+    );
+    console.log(secret);
+  },
+};
+
 export function parser(): yargs.Argv {
-  return yargs.command(rotateCommand).showHelpOnFail(true).strictCommands();
+  return yargs
+    .command(rotateCommand)
+    .command(auditCommand)
+    .showHelpOnFail(true)
+    .strict();
 }
 
 // Only run the command if we're running this file directly
