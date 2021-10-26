@@ -4,6 +4,8 @@ $candidateApis = $apis.apis | Where-Object {
      $_.type -eq "grpc" -and $_.autoGenerator -ne "OwlBot"
 }
 
+$currentBranch = git branch --show-current
+
 foreach ($api in $candidateApis) {
     # Check out a new branch for this API.
     $apiId = $api.id
@@ -14,18 +16,32 @@ foreach ($api in $candidateApis) {
         continue;
     }
 
-    # Set autoGenerator to OwlBot
-    $api | Add-Member -NotePropertyName autoGenerator -NotePropertyValue "OwlBot"
     try {
-        # Write the change
-        ConvertTo-Json -Depth 100 $apis | Out-File apis/apis.json -Encoding utf8
+        # Set autoGenerator to OwlBot
+        $api | Add-Member -NotePropertyName autoGenerator -NotePropertyValue "OwlBot"
+        try {
+            # Write the change
+            ConvertTo-Json -Depth 100 $apis | Out-File apis/apis.json -Encoding utf8
+        } finally {
+            $api.PSObject.Properties.Remove('autoGenerator')
+        }
+
+        # Generate the project files, which removes synth.py and adds Owl Bot
+        # config files.
+        dotnet run -p tools/Google.Cloud.Tools.ReleaseManager generate-projects $apiId
+
+        # Commit changes.
+        $title = "chore: migrate $apiId to Owl Bot"
+        git add -A 
+        git commit -m $title
+
+        # Create a pull request.
+        git push -u origin $branch
+        gh pr create --title $title
     } finally {
-        $api.PSObject.Properties.Remove('autoGenerator')
+        git checkout $currentBranch        
     }
-
-    dotnet run -p tools/Google.Cloud.Tools.ReleaseManager generate-projects $apiId
-
-    break;
+    pause
 }
 
 
