@@ -1,5 +1,3 @@
-$bash = "C:\Program Files\Git\bin\bash.exe"
-
 # Get the list of APIs to migrate.
 $apis = Get-Content apis/apis.json | ConvertFrom-Json
 $candidateApis = $apis.apis | Where-Object {
@@ -27,16 +25,6 @@ foreach ($api in $candidateApis) {
 
     dotnet run -p tools/Google.Cloud.Tools.ReleaseManager generate-projects $apiId
 
-    # Convert dos line-endings to unix line-endings, because that's the standard
-    # for this repo.
-    $changes = git status --porcelain
-    foreach ($change in $changes) {
-        $status, $path = -split $change
-        if ($status -ne "D") {
-            $text = Get-Content $path -raw
-            $text | % {$_ -replace "`r`n", "`n"} | Set-Content -NoNewline $path
-        }
-    }
     break;
 }
 
