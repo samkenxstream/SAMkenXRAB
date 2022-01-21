@@ -17,7 +17,7 @@ import {ApplicationFunction} from 'probot/lib/types';
 import {createProbotAuth} from 'octokit-auth-probot';
 
 import getStream from 'get-stream';
-import intoStream from 'into-stream';
+//import intoStream from 'into-stream';
 import * as http from 'http';
 
 import {v1 as SecretManagerV1} from '@google-cloud/secret-manager';
@@ -1054,7 +1054,8 @@ export class GCFBootstrapper {
         validation: !RUNNING_IN_TEST,
       });
       logger.info(`uploading payload to ${tmp}`);
-      intoStream(body).pipe(writeable);
+      const intoStream = await import('into-stream');
+      intoStream.default(body).pipe(writeable);
       await new Promise((resolve, reject) => {
         writeable.on('error', reject);
         writeable.on('finish', resolve);
