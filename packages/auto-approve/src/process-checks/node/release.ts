@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {LanguageRule, File, Process} from '../../interfaces';
+import {File, Process, PullRequest} from '../../interfaces';
 import {
   checkAuthor,
   checkTitleOrBody,
@@ -26,7 +26,7 @@ import {
 } from '../../utils-for-pr-checking';
 import {Octokit} from '@octokit/rest';
 
-export class NodeRelease extends Process implements LanguageRule {
+export class NodeRelease extends Process {
   classRule: {
     author: string;
     titleRegex?: RegExp;
@@ -40,72 +40,52 @@ export class NodeRelease extends Process implements LanguageRule {
     }[];
   };
 
-  constructor(
-    incomingPrAuthor: string,
-    incomingTitle: string,
-    incomingFileCount: number,
-    incomingChangedFiles: File[],
-    incomingRepoName: string,
-    incomingRepoOwner: string,
-    incomingPrNumber: number,
-    incomingOctokit: Octokit,
-    incomingBody?: string
-  ) {
-    super(
-      incomingPrAuthor,
-      incomingTitle,
-      incomingFileCount,
-      incomingChangedFiles,
-      incomingRepoName,
-      incomingRepoOwner,
-      incomingPrNumber,
-      incomingOctokit,
-      incomingBody
-    ),
-      (this.classRule = {
-        author: 'release-please',
-        titleRegex: /^chore: release/,
-        maxFiles: 2,
-        fileNameRegex: [/^package.json$/, /^CHANGELOG.md$/],
-        fileRules: [
-          {
-            targetFileToCheck: /^package.json$/,
-            // This would match: -  "version": "2.3.0"
-            oldVersion: new RegExp(
-              /-[\s]*"(@?\S*)":[\s]"([0-9]*)*\.([0-9]*\.[0-9]*)",/
-            ),
-            // This would match: +  "version": "2.3.0"
-            newVersion: new RegExp(
-              /\+[\s]*"(@?\S*)":[\s]"([0-9]*)*\.([0-9]*\.[0-9]*)",/
-            ),
-          },
-        ],
-      });
+  constructor(octokit: Octokit) {
+    super(octokit);
+    this.classRule = {
+      author: 'release-please',
+      titleRegex: /^chore: release/,
+      maxFiles: 2,
+      fileNameRegex: [/^package.json$/, /^CHANGELOG.md$/],
+      fileRules: [
+        {
+          targetFileToCheck: /^package.json$/,
+          // This would match: -  "version": "2.3.0"
+          oldVersion: new RegExp(
+            /-[\s]*"(@?\S*)":[\s]"([0-9]*)*\.([0-9]*\.[0-9]*)",/
+          ),
+          // This would match: +  "version": "2.3.0"
+          newVersion: new RegExp(
+            /\+[\s]*"(@?\S*)":[\s]"([0-9]*)*\.([0-9]*\.[0-9]*)",/
+          ),
+        },
+      ],
+    };
   }
 
-  public async checkPR(): Promise<boolean> {
+  public async checkPR(incomingPR: PullRequest): Promise<boolean> {
     const authorshipMatches = checkAuthor(
       this.classRule.author,
-      this.incomingPR.author
+      incomingPR.author
     );
 
     const titleMatches = checkTitleOrBody(
-      this.incomingPR.title,
+      incomingPR.title,
       this.classRule.titleRegex
     );
 
     const fileCountMatch = checkFileCount(
-      this.incomingPR.fileCount,
+      incomingPR.fileCount,
       this.classRule.maxFiles
     );
 
     const filePatternsMatch = checkFilePathsMatch(
-      this.incomingPR.changedFiles.map(x => x.filename),
+      incomingPR.changedFiles.map(x => x.filename),
       this.classRule.fileNameRegex
     );
 
     for (const fileRule of this.classRule.fileRules!) {
-      const fileMatch = this.incomingPR.changedFiles?.find((x: File) =>
+      const fileMatch = incomingPR.changedFiles?.find((x: File) =>
         fileRule.targetFileToCheck.test(x.filename)
       );
 
@@ -126,9 +106,9 @@ export class NodeRelease extends Process implements LanguageRule {
             reportIndividualChecks(
               ['isMergedOnWeekDay', 'isVersionValid', 'oneDependencyChanged'],
               [isMergedOnWeekDay, isVersionValid, oneDependencyChanged],
-              this.incomingPR.repoOwner,
-              this.incomingPR.repoName,
-              this.incomingPR.prNumber,
+              incomingPR.repoOwner,
+              incomingPR.repoName,
+              incomingPR.prNumber,
               fileMatch.filename
             );
             return false;
@@ -149,9 +129,9 @@ export class NodeRelease extends Process implements LanguageRule {
         'filePatternsMatch',
       ],
       [authorshipMatches, titleMatches, fileCountMatch, filePatternsMatch],
-      this.incomingPR.repoOwner,
-      this.incomingPR.repoName,
-      this.incomingPR.prNumber
+      incomingPR.repoOwner,
+      incomingPR.repoName,
+      incomingPR.prNumber
     );
 
     return (

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {LanguageRule, File, Process} from '../interfaces';
+import {Process, PullRequest} from '../interfaces';
 import {
   checkAuthor,
   checkTitleOrBody,
@@ -21,64 +21,41 @@ import {
 import {getFileContent} from '../get-pr-info';
 import {Octokit} from '@octokit/rest';
 
-export class OwlBotTemplateChanges extends Process implements LanguageRule {
+export class OwlBotTemplateChanges extends Process {
   classRule: {
     author: string;
     titleRegex?: RegExp;
     bodyRegex?: RegExp;
   };
 
-  constructor(
-    incomingPrAuthor: string,
-    incomingTitle: string,
-    incomingFileCount: number,
-    incomingChangedFiles: File[],
-    incomingRepoName: string,
-    incomingRepoOwner: string,
-    incomingPrNumber: number,
-    incomingOctokit: Octokit,
-    incomingBody?: string
-  ) {
-    super(
-      incomingPrAuthor,
-      incomingTitle,
-      incomingFileCount,
-      incomingChangedFiles,
-      incomingRepoName,
-      incomingRepoOwner,
-      incomingPrNumber,
-      incomingOctokit,
-      incomingBody
-    ),
-      (this.classRule = {
-        author: 'gcf-owl-bot[bot]',
-        titleRegex: /(fix|feat|!)/,
-        bodyRegex: /PiperOrigin-RevId/,
-      });
+  constructor(incomingOctokit: Octokit) {
+    super(incomingOctokit);
+    this.classRule = {
+      author: 'gcf-owl-bot[bot]',
+      titleRegex: /(fix|feat|!)/,
+      bodyRegex: /PiperOrigin-RevId/,
+    };
   }
 
-  public async checkPR(): Promise<boolean> {
+  public async checkPR(incomingPR: PullRequest): Promise<boolean> {
     const authorshipMatches = checkAuthor(
       this.classRule.author,
-      this.incomingPR.author
+      incomingPR.author
     );
 
     const titleMatches = checkTitleOrBody(
-      this.incomingPR.title,
+      incomingPR.title,
       this.classRule.titleRegex
     );
 
     let bodyMatches = true;
-    if (this.incomingPR.body) {
-      bodyMatches = checkTitleOrBody(
-        this.incomingPR.body,
-        this.classRule.bodyRegex
-      );
+    if (incomingPR.body) {
+      bodyMatches = checkTitleOrBody(incomingPR.body, this.classRule.bodyRegex);
     }
 
     const fileContent = await getFileContent(
-      this.incomingPR.repoOwner,
-      this.incomingPR.repoName,
+      incomingPR.repoOwner,
+      incomingPR.repoName,
       '.repo-metadata.json',
       this.octokit
     );
@@ -88,9 +65,9 @@ export class OwlBotTemplateChanges extends Process implements LanguageRule {
     reportIndividualChecks(
       ['authorshipMatches', 'titleMatches', 'bodyMatches', 'isGAPIC'],
       [authorshipMatches, !titleMatches, !bodyMatches, isGAPIC],
-      this.incomingPR.repoOwner,
-      this.incomingPR.repoName,
-      this.incomingPR.prNumber
+      incomingPR.repoOwner,
+      incomingPR.repoName,
+      incomingPR.prNumber
     );
 
     // We are looking for an antipattern, i.e., if title does not include fix or feat, or if body dodes not include PiperOrigin

@@ -15,82 +15,42 @@
 import {PHPApiaryCodegen} from '../src/process-checks/php/apiary-codegen';
 import {describe, it} from 'mocha';
 import assert from 'assert';
+import { PullRequest } from '../src/interfaces';
 const {Octokit} = require('@octokit/rest');
 
 const octokit = new Octokit({
   auth: 'mypersonalaccesstoken123',
 });
 describe('PHPApiaryCodegen', () => {
-  it('should get constructed with the appropriate values', () => {
-    const rule = new PHPApiaryCodegen(
-      'testAuthor',
-      'testTitle',
-      3,
-      [{filename: 'hello', sha: '2345'}],
-      'testRepoName',
-      'testRepoOwner',
-      1,
-      octokit,
-      'body'
-    );
-
-    const expectation = {
-      incomingPR: {
-        author: 'testAuthor',
-        title: 'testTitle',
-        fileCount: 3,
-        changedFiles: [{filename: 'hello', sha: '2345'}],
-        repoName: 'testRepoName',
-        repoOwner: 'testRepoOwner',
-        prNumber: 1,
-        body: 'body',
-      },
-      classRule: {
-        author: 'yoshi-code-bot',
-        titleRegex: /^Regenerate .* client$/,
-      },
-      octokit,
-    };
-
-    assert.deepStrictEqual(rule.incomingPR, expectation.incomingPR);
-    assert.deepStrictEqual(rule.classRule, expectation.classRule);
-    assert.deepStrictEqual(rule.octokit, octokit);
-  });
-
   it('should return false in checkPR if incoming PR does not match classRules', async () => {
-    const rule = new PHPApiaryCodegen(
-      'testAuthor',
-      'testTitle',
-      3,
-      [{filename: 'hello', sha: '2345'}],
-      'testRepoName',
-      'testRepoOwner',
-      1,
-      octokit,
-      'body'
-    );
+    const pullRequest: PullRequest = {
+      author: 'testAuthor',
+      title: 'testTitle',
+      fileCount: 3,
+      changedFiles: [{filename: 'hello', sha: '2345'}],
+      repoName: 'testRepoName',
+      repoOwner: 'testRepoOwner',
+      prNumber: 1,
+      body: 'body',
+    };
+    const rule = new PHPApiaryCodegen(octokit);
 
-    assert.deepStrictEqual(await rule.checkPR(), false);
+    assert.deepStrictEqual(await rule.checkPR(pullRequest), false);
   });
 
   it('should return true in checkPR if incoming PR does match classRules', async () => {
-    const rule = new PHPApiaryCodegen(
-      'yoshi-code-bot',
-      'Regenerate admin client',
-      2,
-      [
-        {
-          filename: 'README.md',
-          sha: '2345',
-        },
-      ],
-      'testRepoName',
-      'testRepoOwner',
-      1,
-      octokit,
-      'body'
-    );
+    const pullRequest: PullRequest = {
+      author: 'yoshi-code-bot',
+      title: 'Regenerate admin client',
+      fileCount: 3,
+      changedFiles: [{filename: 'hello', sha: '2345'}],
+      repoName: 'testRepoName',
+      repoOwner: 'testRepoOwner',
+      prNumber: 1,
+      body: 'body',
+    };
+    const rule = new PHPApiaryCodegen(octokit);
 
-    assert.ok(await rule.checkPR());
+    assert.deepStrictEqual(await rule.checkPR(pullRequest), true);
   });
 });

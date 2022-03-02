@@ -66,34 +66,6 @@ export interface FileAndMetadata {
 }
 
 /**
- * Class interface for language-specific rules. These methods ensure that a given language
- * provides a process for deciding whether a release-type, dependency-type pr passes language-specific additional
- * checks, and then overall confirms if that PR passes additional checks for its given language.
- */
-export interface LanguageRule {
-  checkPR(): Promise<boolean>;
-  incomingPR: {
-    author: string;
-    title: string;
-    fileCount: number;
-    changedFiles: File[];
-    repoName: string;
-    repoOwner: string;
-    prNumber: number;
-    body?: string;
-  };
-  classRule: {
-    author: string;
-    titleRegex?: RegExp;
-    fileNameRegex?: RegExp[];
-    maxFiles?: number;
-    fileRules?: FileRule[];
-    bodyRegex?: RegExp;
-  };
-  octokit: Octokit;
-}
-
-/**
  * Interface for reviews returned from Github with the pulls.listReviews method.
  */
 export interface Reviews {
@@ -152,40 +124,23 @@ export interface ConfigurationV2 {
   processes: string[];
 }
 
+export interface PullRequest {
+  author: string;
+  title: string;
+  fileCount: number;
+  changedFiles: File[];
+  repoName: string;
+  repoOwner: string;
+  prNumber: number;
+  body?: string;
+}
+
 export abstract class Process {
-  incomingPR: {
-    author: string;
-    title: string;
-    fileCount: number;
-    changedFiles: File[];
-    repoName: string;
-    repoOwner: string;
-    prNumber: number;
-    body?: string;
-  };
   octokit: Octokit;
 
-  constructor(
-    incomingPrAuthor: string,
-    incomingTitle: string,
-    incomingFileCount: number,
-    incomingChangedFiles: File[],
-    incomingRepoName: string,
-    incomingRepoOwner: string,
-    incomingPrNumber: number,
-    incomingOctokit: Octokit,
-    incomingBody?: string
-  ) {
-    this.incomingPR = {
-      author: incomingPrAuthor,
-      title: incomingTitle,
-      fileCount: incomingFileCount,
-      changedFiles: incomingChangedFiles,
-      repoName: incomingRepoName,
-      repoOwner: incomingRepoOwner,
-      prNumber: incomingPrNumber,
-      body: incomingBody,
-    };
+  constructor(incomingOctokit: Octokit) {
     this.octokit = incomingOctokit;
   }
+
+  abstract checkPR(pullRequest: PullRequest): Promise<boolean>;
 }

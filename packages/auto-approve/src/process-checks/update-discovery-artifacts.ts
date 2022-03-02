@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {LanguageRule, File, Process} from '../interfaces';
+import {Process, PullRequest} from '../interfaces';
 import {
   checkAuthor,
   checkTitleOrBody,
@@ -21,7 +21,7 @@ import {
 } from '../utils-for-pr-checking';
 import {Octokit} from '@octokit/rest';
 
-export class UpdateDiscoveryArtifacts extends Process implements LanguageRule {
+export class UpdateDiscoveryArtifacts extends Process {
   classRule: {
     author: string;
     titleRegex?: RegExp;
@@ -36,28 +36,8 @@ export class UpdateDiscoveryArtifacts extends Process implements LanguageRule {
     ];
   };
 
-  constructor(
-    incomingPrAuthor: string,
-    incomingTitle: string,
-    incomingFileCount: number,
-    incomingChangedFiles: File[],
-    incomingRepoName: string,
-    incomingRepoOwner: string,
-    incomingPrNumber: number,
-    incomingOctokit: Octokit,
-    incomingBody?: string
-  ) {
-    super(
-      incomingPrAuthor,
-      incomingTitle,
-      incomingFileCount,
-      incomingChangedFiles,
-      incomingRepoName,
-      incomingRepoOwner,
-      incomingPrNumber,
-      incomingOctokit,
-      incomingBody
-    ),
+  constructor(incomingOctokit: Octokit) {
+    super(incomingOctokit),
       (this.classRule = {
         author: 'yoshi-code-bot',
         titleRegex: /^chore: Update discovery artifacts/,
@@ -69,19 +49,19 @@ export class UpdateDiscoveryArtifacts extends Process implements LanguageRule {
       });
   }
 
-  public async checkPR(): Promise<boolean> {
+  public async checkPR(incomingPR: PullRequest): Promise<boolean> {
     const authorshipMatches = checkAuthor(
       this.classRule.author,
-      this.incomingPR.author
+      incomingPR.author
     );
 
     const titleMatches = checkTitleOrBody(
-      this.incomingPR.title,
+      incomingPR.title,
       this.classRule.titleRegex
     );
 
     const filePatternsMatch = checkFilePathsMatch(
-      this.incomingPR.changedFiles.map(x => x.filename),
+      incomingPR.changedFiles.map(x => x.filename),
       this.classRule.fileNameRegex
     );
 
@@ -93,9 +73,9 @@ export class UpdateDiscoveryArtifacts extends Process implements LanguageRule {
         'filePatternsMatch',
       ],
       [authorshipMatches, titleMatches, filePatternsMatch],
-      this.incomingPR.repoOwner,
-      this.incomingPR.repoName,
-      this.incomingPR.prNumber
+      incomingPR.repoOwner,
+      incomingPR.repoName,
+      incomingPR.prNumber
     );
 
     return authorshipMatches && titleMatches && filePatternsMatch;

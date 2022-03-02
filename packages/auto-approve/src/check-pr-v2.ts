@@ -16,7 +16,7 @@
 import {PullRequestEvent} from '@octokit/webhooks-types/schema';
 import {getChangedFiles} from './get-pr-info';
 import {Octokit} from '@octokit/rest';
-import {ConfigurationV2} from './interfaces';
+import {ConfigurationV2, PullRequest} from './interfaces';
 import {UpdateDiscoveryArtifacts} from './process-checks/update-discovery-artifacts';
 import {RegenerateReadme} from './process-checks/regenerate-readme';
 import {DiscoveryDocUpdate} from './process-checks/discovery-doc-update';
@@ -106,24 +106,24 @@ export async function checkPRAgainstConfigV2(
     repo,
     prNumber
   );
+  const pullRequest: PullRequest = {
+    author: prAuthor,
+    title,
+    fileCount,
+    changedFiles,
+    repoName: repo,
+    repoOwner,
+    prNumber,
+    body,
+  };
 
   for (const rule of config.processes) {
-    const Rule = typeMap.find(x => x.configValue === rule);
+    const ruleType = typeMap.find(x => x.configValue === rule);
     // We can assert we'll find a match, since the config has already passed
     // a check that it corresponds to one of the processes
-    const instantiatedRule = new Rule!.configType(
-      prAuthor,
-      title,
-      fileCount,
-      changedFiles,
-      repo,
-      repoOwner,
-      prNumber,
-      octokit,
-      body ?? undefined
-    );
+    const instantiatedRule = new ruleType!.configType(octokit);
 
-    const passed = await instantiatedRule.checkPR();
+    const passed = await instantiatedRule.checkPR(pullRequest);
 
     // Stop early if the PR passes for one of the cases allowed by the config
     if (passed === true) {

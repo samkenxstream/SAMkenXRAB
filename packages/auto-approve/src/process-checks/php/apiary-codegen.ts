@@ -12,66 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {LanguageRule, File, Process} from '../../interfaces';
-import {
-  checkAuthor,
-  checkTitleOrBody,
-  reportIndividualChecks,
-} from '../../utils-for-pr-checking';
 import {Octokit} from '@octokit/rest';
+import {AuthorTitleProcess} from '../author-title';
 
-export class PHPApiaryCodegen extends Process implements LanguageRule {
-  classRule: {
-    author: string;
-    titleRegex: RegExp;
-  };
-
-  constructor(
-    incomingPrAuthor: string,
-    incomingTitle: string,
-    incomingFileCount: number,
-    incomingChangedFiles: File[],
-    incomingRepoName: string,
-    incomingRepoOwner: string,
-    incomingPrNumber: number,
-    incomingOctokit: Octokit,
-    incomingBody?: string
-  ) {
-    super(
-      incomingPrAuthor,
-      incomingTitle,
-      incomingFileCount,
-      incomingChangedFiles,
-      incomingRepoName,
-      incomingRepoOwner,
-      incomingPrNumber,
-      incomingOctokit,
-      incomingBody
-    ),
-      (this.classRule = {
-        author: 'yoshi-code-bot',
-        titleRegex: /^Regenerate .* client$/,
-      });
-  }
-
-  public async checkPR(): Promise<boolean> {
-    const authorshipMatches = checkAuthor(
-      this.classRule.author,
-      this.incomingPR.author
-    );
-
-    const titleMatches = checkTitleOrBody(
-      this.incomingPR.title,
-      this.classRule.titleRegex
-    );
-    reportIndividualChecks(
-      ['authorshipMatches', 'titleMatches'],
-      [authorshipMatches, titleMatches],
-      this.incomingPR.repoOwner,
-      this.incomingPR.repoName,
-      this.incomingPR.prNumber
-    );
-
-    return authorshipMatches && titleMatches;
+export class PHPApiaryCodegen extends AuthorTitleProcess {
+  constructor(octokit: Octokit) {
+    super(octokit, 'yoshi-code-bot', /^Regenerate .* client$/);
   }
 }
