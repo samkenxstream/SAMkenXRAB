@@ -18,6 +18,8 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import {logger} from 'gcf-utils';
 import {Octokit} from '@octokit/rest';
+import * as semver from 'semver';
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -245,7 +247,28 @@ export function doesDependencyChangeMatchPRTitle(
 }
 
 /**
- * This function checks whether the dependency stated in a given title was the one that was changed (non Java, see doesDependencyChangeMatchPRTitleJava)
+ * This function checks whether the dependency changed matches a regex to include
+ *
+ * @param versions the Versions object that contains the old dependency name and new dependency name and versions
+ * @param regexToInclude an array of regexes to search for
+ * @returns whether the dependencies match to any of the given regexesß
+ */
+export function doesDependencyMatchAgainstRegexes(
+  versions: Versions,
+  regexToInclude: RegExp[]
+): boolean {
+  let doesDepIncludeRegexToInclude = false;
+  regexToInclude?.forEach(regex => {
+    if (versions.newDependencyName.match(regex)) {
+      doesDepIncludeRegexToInclude = true;
+    }
+  });
+
+  return doesDepIncludeRegexToInclude;
+}
+
+/**
+ * This function checks whether the dependency stated in a given title was the one that was changed (not Java, see doesDependencyChangeMatchPRTitleJava)
  *
  * @param versions the Versions object that contains the old dependency name and new dependency name and versions
  * @param dependencyRegex the regular exp to find the dependency within the title of the PR
@@ -262,16 +285,12 @@ export function doesDependencyChangeMatchPRTitleV2(
 
   if (titleRegex) {
     dependencyName = titleRegex[2];
-
-    return (
-      versions.newDependencyName === versions.oldDependencyName &&
-      dependencyName === versions.newDependencyName
-    );
   }
-
-  return false;
+  return (
+    versions.newDependencyName === versions.oldDependencyName &&
+    dependencyName === versions.newDependencyName
+  );
 }
-
 /**
  * This function determines whether the major version of a package was changed.
  *
@@ -290,6 +309,19 @@ export function isMajorVersionChanging(versions: Versions): boolean {
  */
 export function isMinorVersionUpgraded(versions: Versions): boolean {
   return Number(versions.newMinorVersion) > Number(versions.oldMinorVersion);
+}
+
+/**
+ * This function determines whether a package was upgraded, regardless of whether or not it was a major bump.
+ *
+ * @param versions an object containing the previous and newer versions of the package being updated
+ * @returns whether the minor version was upgraded.
+ */
+export function isVersionBumped(versions: Versions): boolean {
+  return semver.lt(
+    versions.oldMajorVersion + '.' + versions.oldMinorVersion,
+    versions.newMajorVersion + '.' + versions.newMinorVersion
+  );
 }
 
 /**
